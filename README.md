@@ -6,10 +6,8 @@ demonstrating the potential of smart mirrors in various applications,
 from personal use to smart home automation.  
 
 ## 👨‍💻 Team Members  
--  [**Azzam Almuallim**] LinkedIn: https://www.linkedin.com/in/azzam-almuallim-2328572b9/
--  [**Abdlahadi Alshehri**] LinkedIn: https://www.linkedin.com/in/abdalhadi-alshehri/
--  [**Anwar Al-Luhaibi**] LinkedIn: https://www.linkedin.com/in/anwar-al-luhaibi-9461a7304/
--  [**Osama Aljabri**] LinkedIn: https://www.linkedin.com/in/osama-aljabri-04a946309/
+- [**Azzam Almuallim**](https://www.linkedin.com/in/azzam-almuallim-2328572b9/) | [**Abdlahadi Alshehri**](https://www.linkedin.com/in/abdalhadi-alshehri/)
+- [**Anwar Al-Luhaibi**](https://www.linkedin.com/in/anwar-al-luhaibi-9461a7304/) | [**Osama Aljabri**](https://www.linkedin.com/in/osama-aljabri-04a946309/)
 
 ## 🚀 Features  
 ✅ Facial recognition-based authentication  
