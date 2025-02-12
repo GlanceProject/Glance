@@ -1,0 +1,175 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/navigation.js') }}"></script>
+    <title>Smart Mirror</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background: linear-gradient(135deg, #141e30, #243b55);
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        /* Grid Background Effect */
+        body::before {
+            content: "";
+            position: absolute;
+            width: 300%;
+            height: 200%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 157, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 157, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            transform: translate(-25%, -25%) rotate(15deg);
+            z-index: 1;
+            pointer-events: none; 
+        }
+        
+        h1 {
+            font-size: 3rem;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff;
+            margin-bottom: 20px;
+        }
+        h2 {
+            font-size: 2.25rem;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0), 0 0 20px rgb(236, 238, 238), 0 0 40px #0ff;
+            margin-bottom: 20px;
+        }
+        .container {
+            position: relative;
+            background: transparent;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            z-index: 2;
+            box-shadow: 0 0 30px rgba(0, 255, 157, 0.1);
+            animation: containerFloat 6s ease-in-out infinite;
+        }
+        .button-container a {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px 20px;
+            background: rgba(118, 192, 192, 0);
+            border: 1px solid #0ff;
+            color: rgb(255, 255, 255);
+            text-decoration: none;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        
+
+        .button-container a:hover {
+            background: rgba(0, 255, 255, 0.5);
+            box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+        }
+
+        /* Animated Divider */
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(0, 255, 157, 0.5), 
+                transparent);
+            margin: 30px 0;
+            position: relative;
+        }
+
+        .divider::after {
+            content: "";
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: rgba(0, 255, 255, 0.712);
+            border-radius: 50%;
+            top: -10px;
+            left: -10px;
+            animation: scan 2s ease-in-out 0.25s infinite alternate ;
+            box-shadow: 0 0 10px rgba(24, 194, 194, 0.979);
+        }
+
+        @keyframes scan {
+            0% { left: -10px; }
+            100% { left: calc(100% + 10px); }
+        }
+
+        img {
+            max-width: 200px;
+            border: 2px solid #0ff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+        }
+        @keyframes qrPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        /* Terminal-style Status Bar */
+        .status-bar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: rgba(0, 255, 255, 0.603);
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="status-bar">GLANCE ● v4.0</div>
+    <div class="container">
+        <h1>GLANCE </h1>
+        <h2>YOUR SMART MIRROR</h2>     
+        {% if is_mobile %}
+        <div class="button-container">
+            <a href="/login">LOGIN</a>
+            <a href="/register">REGISTER USER</a>
+        </div>
+        {% endif %}
+        <div class="divider"></div>
+        {% if not is_mobile %}
+        <div class="qr-container">
+            <h3>Scan QR Code</h3>
+            <img src="/qrcode">
+        </div>
+        {% endif %}
+
+    </div>
+  <!-- Face Recognition Script Logic -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const recognitionInterval = setInterval(attemptFaceRecognition, 1000);
+      function attemptFaceRecognition() {
+        fetch('/api/recognize_face')
+          .then(response => {
+            if (response.redirected) {
+              window.location.href = response.url;
+            } else {
+              return response.json();
+            }
+          })
+          .then(data => {
+            if (data && data.status === 'success') {
+              clearInterval(recognitionInterval);
+              alert(`Welcome, ${data.username}!`);
+            } else {
+              console.log('No face recognized yet. Retrying...');
+            }
+          })
+          .catch(error => console.error('Error during face recognition:', error));
+      }
+    });
+  </script>
+</body>
+</html>

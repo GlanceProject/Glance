@@ -1,0 +1,409 @@
+<!-- templates/optimization.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/ico" href="static/favicon.ico" />
+    <meta charset="UTF-8">
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/navigation.js') }}"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimization Page</title>
+    <style>
+        /* Basic Reset */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background: linear-gradient(135deg, #141e30, #243b55);
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            min-height: 100vh;
+            position: relative;
+        }
+        /* Grid Background Effect */
+        body::before {
+            content: "";
+            position: absolute;
+            width: 300%;
+            height: 200%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 157, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 157, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            transform: translate(-25%, -25%) rotate(15deg);
+            z-index: 1;
+            pointer-events: none; 
+        }
+        h1, h2 {
+            font-size: 2rem;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff;
+            margin-bottom: 20px;
+        }
+        .header-actions {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        .btn-primary {
+            background-color: rgba(0, 255, 255, 0.2);
+            border: 1px solid #0ff;
+        }
+        .btn-primary:hover {
+            background-color: rgba(0, 255, 255, 0.5);
+            box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+        }
+        .btn-danger {
+            background-color: rgba(255, 0, 0, 0.2);
+            border: 1px solid #f00;
+        }
+        .btn-danger:hover {
+            background-color: rgba(255, 0, 0, 0.5);
+            box-shadow: 0 0 10px #f00, 0 0 20px #f00;
+        }
+        .dashboard-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 900px;
+            gap: 20px;
+        }
+        .container {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 157, 0.1);
+            width: 48%;
+            height: auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #0ff;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            border-radius: 4px;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.4);
+            color: #fff;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .form-group input:focus {
+            border-color: #0ff;
+            box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+        }
+        .location{
+            margin: 10px 0;
+            border-color: #0ff;
+            box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+        }
+        .schedule-list {
+            margin-top: 20px;
+        }
+        .schedule-item {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: box-shadow 0.3s;
+        }
+        .schedule-item:hover {
+            box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+        }
+        .flashed-messages {
+            list-style: none;
+            padding: 0;
+            color: #0ff;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        .success {
+            color: #0ff;
+        }
+        .error {
+            color: #f00;
+        }
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            h1, h2 {
+                font-size: 1.8rem;
+            }
+            body {
+                padding: 20px;
+            }
+            .dashboard-container {
+                flex-direction: column;
+                gap: 20px;
+            }
+            .container {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-actions">
+        <button id="Returnbtn" class="btn btn-primary">Return to Dashboard</button>
+    </div>
+    <div class="dashboard-container">
+        <div class="container">
+            <h2>Weather Settings</h2>
+            <form id="weatherForm">
+                <label for="location">Location:</label>
+                <input class="location" type="text" id="location" name="location" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                <button class="btn btn-primary"type="submit">Save Location</button>
+            </form>
+        </div>
+        <!-- Schedule Optimization Section -->
+        <div class="container">
+            <h2>Schedule Optimization</h2>
+            <div class="schedule-form">
+                <h2>Add New Schedule</h2>
+                <form id="addScheduleForm">
+                    <div class="form-group">
+                        <label for="title">Title *</label>
+                        <input type="text" id="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="note">Note</label>
+                        <input type="text" id="note" >
+                    </div>
+                    <div class="form-group">
+                        <label for="date">Date</label>
+                        <input type="date" id="date" >
+                    </div>
+                    <div class="form-group">
+                        <label for="time">Time</label>
+                        <input type="time" id="time" >
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Schedule</button>
+                </form>
+            </div>
+            <div class="schedule-list">
+                <h2>Delete Schedule</h2>
+                {% if schedules %}
+                {% for schedule in schedules %}
+                <div class="schedule-item" data-id="{{ schedule.id }}">
+                    <span>{{ schedule.title }} - {{ schedule.date }} {{ schedule.time }}</span>
+                    <button class="btn btn-danger delete-schedule" data-id="{{ schedule.id }}">Delete</button>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p>No schedules found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <script>
+        // Add Schedule with input validation
+        document.getElementById('addScheduleForm')?.addEventListener('submit', async function (e) {
+            e.preventDefault();
+        
+            // Get form values
+            const title = document.getElementById('title').value.trim();
+            const date = document.getElementById('date')?.value || '';
+            const time = document.getElementById('time')?.value || '';
+            const note = document.getElementById('note')?.value.trim() || ''; // Default to empty string if null
+        
+            // Validate required fields
+            if (!title) {
+                alert('Please fill in all required fields: Title, Date, and Time.');
+                return;
+            }
+        
+            try {
+                // Send POST request to add the schedule
+                const response = await fetch('/schedules', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include', // Include session cookies
+                    body: JSON.stringify({
+                        title,
+                        note,
+                        date,
+                        time
+                    })
+                });
+        
+                // Handle non-OK responses
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to add schedule');
+                }
+        
+                // Success response
+                const data = await response.json();
+                alert('Schedule added successfully!');
+                location.reload(); // Refresh the page to reflect changes
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`Error: ${error.message}`);
+            }
+        });
+
+        // Delete Schedule with confirmation
+        document.querySelectorAll('.delete-schedule').forEach(button => {
+            button.addEventListener('click', async function () {
+                // Confirm deletion with the user
+                if (!confirm('Are you sure you want to delete this schedule?')) return;
+        
+                // Get the schedule ID from the button's dataset
+                const scheduleId = this.dataset.id;
+        
+                try {
+                    // Send DELETE request to remove the schedule
+                    const response = await fetch(`/schedules?schedule_id=${scheduleId}`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include' // Include session cookies
+                    });
+        
+                    // Handle non-OK responses
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to delete schedule');
+                    }
+        
+                    // Success response
+                    alert('Schedule deleted successfully!');
+                    location.reload(); // Refresh the page to reflect changes
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert(`Error: ${error.message}`);
+                }
+            });
+        });
+        // Location Form Submission with validation
+        document.getElementById('weatherForm')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const location = document.getElementById('location').value.trim();
+            
+            if (!location) {
+                alert('Please enter a location');
+                return;
+            }
+
+            try {
+                const response = await fetch('/location', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ location })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to save location');
+                }
+
+                alert('Location saved successfully!');  
+                // Consider automatically updating weather display here
+                if (typeof displayWeather === 'function') displayWeather();
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`Error: ${error.message}`);
+            }
+        });
+        async function displaySchedule() {
+            console.log('[displaySchedule] Starting schedule fetch process.');
+        
+            // ✅ Get the session_id from the URL (if available)
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session_id');
+        
+            try {
+                console.log('[displaySchedule] Sending request to /schedules...');
+        
+                // ✅ Include session_id in the request if it exists
+                const apiUrl = sessionId ? `/schedules?session_id=${sessionId}` : '/schedules';
+                const response = await fetch(apiUrl, { credentials: 'include' });  // Ensure cookies are included
+        
+                console.log('[displaySchedule] Response received:', response);
+        
+                if (!response.ok) {
+                    console.error(`[displaySchedule] Server responded with status: ${response.status}`);
+                    const errorText = await response.text();
+                    console.error(`[displaySchedule] Server error message: ${errorText}`);
+                    throw new Error(`Failed to fetch schedules. Status: ${response.status}`);
+                }
+        
+                const schedules = await response.json();
+                console.log('[displaySchedule] Parsed schedules:', schedules);
+        
+                const scheduleList = document.getElementById('scheduleList');
+                const noSchedulesMessage = document.getElementById('noSchedulesMessage');
+        
+                if (!scheduleList || !noSchedulesMessage) {
+                    console.error('[displaySchedule] Missing DOM elements.');
+                    throw new Error('Required DOM elements are missing.');
+                }
+        
+                scheduleList.innerHTML = ''; // Clear existing content
+        
+                if (schedules.length > 0) {
+                    noSchedulesMessage.style.display = 'none';
+        
+                    schedules.forEach(schedule => {
+                        const scheduleItem = document.createElement('div');
+                        scheduleItem.classList.add('schedule-item');
+                        scheduleItem.dataset.id = schedule.id;
+                        scheduleItem.innerHTML = `
+                            <h3>${schedule.title}</h3>
+                            <p><strong>Note:</strong> ${schedule.note}</p>
+                            <p><strong>Date:</strong> ${schedule.date}</p>
+                            <p><strong>Time:</strong> ${schedule.time}</p>
+                            <div class="divider"></div>
+                        `;
+                        scheduleList.appendChild(scheduleItem);
+                    });
+                } else {
+                    noSchedulesMessage.style.display = 'block';
+                }
+        
+                console.log('[displaySchedule] Schedule display process completed successfully.');
+        
+            } catch (error) {
+                console.error('[displaySchedule] Error occurred:', error);
+                const errorContainer = document.getElementById('scheduleContainer');
+                if (errorContainer) {
+                    errorContainer.innerHTML = `⚠️ Error: ${error.message}`;
+                }
+            }
+        }
+        
+        document.getElementById('Returnbtn')?.addEventListener('click', function() {
+                navigateTo('/dashboard/user'); // Navigate to the dashboard
+        });
+    </script>
+</body>
+</html>

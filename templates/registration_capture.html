@@ -1,0 +1,263 @@
+<!-- templates/registration_capture.html -->
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="icon" type="image/ico" href="static/favicon.ico" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/navigation.js') }}"></script>
+<title>Face Registration</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* Basic Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background: linear-gradient(135deg, #141e30, #243b55);
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        /* Grid Background Effect */
+        body::before {
+            content: "";
+            position: absolute;
+            width: 300%;
+            height: 200%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 157, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 157, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            transform: translate(-25%, -25%) rotate(15deg);
+            z-index: 1;
+            pointer-events: none; 
+        }
+        /* Mobile Message Styling */
+        .mobile-message {
+            text-align: center;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .mobile-message h2 {
+            font-size: 2rem;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff;
+            margin-bottom: 20px;
+        }
+        .mobile-message p {
+            font-size: 1.2em;
+            color: #0ff;
+            line-height: 1.6;
+        }
+        .countdown {
+            font-size: 2em;
+            color: #0ff;
+            margin: 20px 0;
+            text-shadow: 0 0 5px #0ff, 0 0 10px #0ff;
+        }
+        /* Host View Styling */
+        .container {
+            text-align: center;
+            width: 90%;
+            max-width: 600px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(0, 255, 157, 0.1);
+            position: relative;
+            z-index: 2;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #0ff;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff;
+        }
+        .progress-container {
+            width: 100%;
+            height: 15px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #0ff;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+        #instructions {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+        }
+        #instructions h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #0ff;
+        }
+        #instructions p {
+            margin: 5px 0;
+            color: #0ff;
+        }
+        .tip {
+            font-style: italic;
+            color: #0ff;
+        }
+        img {
+            width: 100%;
+            height: auto;
+            max-width: 640px;
+            border-radius: 8px;
+            border: 3px solid #0ff;
+            margin-top: 20px;
+        }
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+            body {
+                height: auto;
+                min-height: 100vh;
+                padding: 20px;
+            }
+            .container {
+                padding: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    {% if is_mobile %}
+    <!-- Mobile View --> 
+    <div class="mobile-message">
+        <h2>Registration In Progress</h2>
+        <p>Please look at the Smart Mirror display and follow these instructions:</p>
+        <div id="mobileInstructions">
+            <p>1. Stand facing the mirror directly</p>
+            <p>2. Ensure good lighting on your face</p>
+            <p>3. Follow the on-screen prompts</p>
+            <p>4. Move slowly during capture process</p>
+        </div>
+        <div class="countdown" id="countdown">Starting in 5 seconds...</div>
+    </div>
+    <script>
+        const token = "{{ token }}";
+        let count = 5;
+        const countdownElement = document.getElementById('countdown');
+    
+        // Check if we've already completed the initial redirect
+        if (!sessionStorage.getItem('registrationRedirected')) {
+            const countdown = setInterval(() => {
+                count--;
+                countdownElement.textContent = `Starting in ${count} seconds...`;
+                if (count <= 0) {
+                    clearInterval(countdown);
+                    sessionStorage.setItem('registrationRedirected', 'true'); // Set flag
+                    navigateTo(`/registration_capture/${token}`);
+                }
+            }, 1000);
+        } else {
+            countdownElement.textContent = "Registration in progress...";
+        }
+        // Listen for registration_complete events from the server
+        socket.on('registration_complete', () => {
+            console.log("Registration complete received.");
+            setTimeout(() => {
+                navigateTo('/login'); // Navigate to login page after registration
+            }, 1000);  // Wait 1 second to ensure backend completes
+        });
+        
+    </script>
+    {% else %}
+    <!-- Host View -->
+    <title>Face Registration - {{ username }}</title>
+    <div class="container">
+        <h1>Registering: {{ username }}</h1>
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+        </div>
+        <div id="instructions">
+            <h3>Photo <span id="currentCount">0</span>/30</h3>
+            <h3>Capture in: <span id="time">5</span></h3>
+            <p id="directionText">Look straight ahead</p>
+        </div>
+        <img src="{{ url_for('reg_video_feed', token=token) }}?t={{ timestamp }}" alt="Live video feed">
+    </div>
+    
+    <script>
+        const token = "{{ token }}";
+        let updateInterval;
+        function getInstruction(progress) {
+            const phases = [
+                {range: [0, 5], text: "Look straight ahead"},
+                {range: [6, 14], text: "Slowly turn left"},
+                {range: [15, 20], text: "Slowly turn right"},
+                {range: [21, 25], text: "Tilt your head down"}, 
+                {range: [26, 29], text: "Tilt your head up"},
+                {range: [30, 30], text: "Complete!"}
+            ];
+            
+            return phases.find(p => progress >= p.range[0] && progress <= p.range[1])?.text || "Look straight ahead";
+        }
+
+        function updateProgress() {
+            fetch(`/registration_progress/${token}`)
+                .then(response => response.json())
+                .then(data => {
+                    const progress = parseInt(data.progress) || 0;
+                    const total = parseInt(data.total) || 30;
+                    const captime = parseFloat(data.captime) || 0;
+                    // Update progress bar width
+                    const progressBar = document.getElementById('progressBar');
+                    progressBar.style.width = `${(progress / total) * 100}%`;
+                    // Update photo count
+                    document.getElementById('currentCount').textContent = `${progress}`;
+                    // Update timer
+                    document.getElementById('time').textContent = 
+                        progress >= total ? "Complete!" : Math.max(captime, 0).toFixed(1);
+                    // Update instructions
+                    document.getElementById('directionText').textContent = getInstruction(progress);
+                    // Check if registration is complete
+                    if (progress >= total) {
+                        clearInterval(updateInterval);
+                        document.getElementById('directionText').textContent = "Registration complete!";
+                        socket.on('registration_complete', () => {
+                            console.log("Registration complete received.");
+                            setTimeout(() => {
+                                navigateTo('/login'); // Navigate to login page after registration
+                            }, 1000);  // Wait 1 second to ensure backend completes
+                        });
+                    }                    
+                })
+                .catch(error => console.error("Error fetching progress:", error));
+        }
+        // Start the progress updates immediately
+        updateInterval = setInterval(updateProgress, 50); // Update every 500ms
+        updateProgress(); // Initial update
+        
+        socket.on('new_registration', (data) => {
+            if (data.token) {
+                window.location.href = `/registration_capture/${data.token}`;
+            }
+        });
+    </script>
+    {% endif %}
+</body>
+</html>

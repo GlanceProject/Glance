@@ -1,0 +1,353 @@
+<!-- templates/dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/ico" href="static/favicon.ico" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/navigation.js') }}"></script>
+ <style>
+    /* Basic Reset */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Orbitron', sans-serif;
+            color: #fff;
+            background: linear-gradient(135deg, #141e30, #243b55); /* Main background gradient */
+            position: relative;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            min-height: 100vh;
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+        }
+        
+        /* Grid Background Effect */
+        body::before {
+            content: "";
+            position: absolute;
+            width: 300%;
+            height: 200%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 157, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 157, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            transform: translate(-25%, -25%) rotate(15deg);
+            z-index: 1;
+            pointer-events: none; 
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+        }
+        
+        .content {
+            position: relative; /* Positioning for content above grid */
+            z-index: 2; /* Ensure content is above the grid */
+        }
+        /* Heading Styles */
+        h1 {
+            font-size: 2rem;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            text-shadow: 0 0 5px #0ff, 0 0 10px #0ff;
+            margin-bottom: 10px;
+        }
+
+        /* Header Actions */
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 20px;
+        }
+
+        /* Button Styles */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+
+        .btn-primary {
+            background-color: rgba(0, 255, 255, 0.2);
+            border: 1px solid #0ff;
+        }
+
+        .btn-primary:hover {
+            background-color: rgba(0, 255, 255, 0.5);
+            box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+        }
+
+        /* Clock Style */
+        .clock {
+            font-size: 3rem;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff;
+        }
+
+        /* Dashboard Container */
+        .dashboard-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1200px;
+            gap: 20px;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+        }
+
+        /* Schedule and Weather Display */
+        .schedule-container, .weather-display {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 157, 0.1);
+            width: 48%;
+            height: auto;
+        }
+
+        /* Schedule Item */
+        .schedule-item {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            transition: box-shadow 0.3s;
+        }
+
+        .schedule-item:hover {
+            box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+        }
+
+        /* Form Group */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #0ff;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            border-radius: 4px;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.4);
+            color: #fff;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            border-color: #0ff;
+            box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            h1, h2 {
+                font-size: 1.8rem;
+            }
+            .dashboard-container {
+                flex-direction: column; /* Stack the items on smaller screens */
+                gap: 20px;
+            }
+            .schedule-container, .weather-display {
+                width: 100%; /* Full width on mobile */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-actions">
+        <div id="clock" class="clock"></div>
+        <div class="btn-container">
+            <button id="homebtn" class="btn btn-primary" href="#" onclick="navigateTo('/')">Home</button>
+            <button id="editScheduleBtn" class="btn btn-primary" href="#" onclick="navigateTo('/dashboard/optimization')">Edit</button>
+        </div>            
+    </div>
+    <div class="dashboard-container">
+        <div id="weather" class="weather-display">
+            <h2></h2>
+        </div>  
+        <div id="scheduleContainer" class="schedule-container">
+            <h1>Your Schedules</h1>
+            {% if schedules %}
+                {% for schedule in schedules %}
+                <div class="schedule-item" data-id="{{ schedule.id }}">
+                    <h3>{{ schedule.title }}</h3>
+                    <p><strong>Note:</strong> {{ schedule.note }}</p>
+                    <p><strong>Date:</strong> {{ schedule.date }}</p>
+                    <p><strong>Time:</strong> {{ schedule.time }}</p>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p>No schedules found. Add one via the dashboard settings!</p>
+            {% endif %}
+        </div>
+    </div>
+    <script>
+        function updateClock() {
+            const now = new Date();
+            const options = { hour: '2-digit', minute: '2-digit' };
+            document.getElementById('clock').innerHTML = now.toLocaleTimeString([], options);
+        }
+        setInterval(updateClock, 1000); // Update clock every second
+
+        async function getCoordinates(city) {
+            const apiKey = 'bfeb2f99800d549a879b4da9eb0fd56a';
+            const geoUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)}&limit=1&appid=${apiKey}`;
+            
+            try {
+                const response = await fetch(geoUrl);
+                console.log('Geocoding response:', response); // Add this line
+                
+                if (!response.ok) {
+                    throw new Error(`Geocoding API error: ${response.status} ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Geocoding data:', data); // Add this line
+                
+                if (!data || data.length === 0) {
+                    throw new Error(`City "${city}" not found`);
+                }
+                
+                // Modify return statement in getCoordinates()
+            return { 
+                lat: data[0].lat, 
+                lon: data[0].lon,
+                actualName: data[0].name // Add this line
+            };
+            } catch (error) {
+                console.error('Geocoding error:', error);
+                throw error;
+            }
+        }
+        
+        async function getWeather(lat, lon) {
+            const apiKey = 'f59fa303e99ad0754266a7d89342753e';
+            const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
+        
+            try {
+                const response = await fetch(weatherUrl);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Weather request failed');
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Weather fetch error:', error);
+                throw new Error('Could not retrieve weather data');
+            }
+        }
+        
+
+        async function displayWeather() {
+            const weatherDiv = document.getElementById('weather');
+            if (!weatherDiv) {
+                console.error('Weather display element not found!');
+                return;
+            }
+            
+            try {
+                // Get location
+                const locationResponse = await fetch('/location');
+                if (!locationResponse.ok) throw new Error('Failed to get stored location');
+                const locationData = await locationResponse.json();
+                const location = locationData.location;  // Properly access the location
+                
+                // Get coordinates
+                const { lat, lon, actualName } = await getCoordinates(location);
+                
+                // Get weather data
+                const weatherData = await getWeather(lat, lon);
+                
+                // Update display with template literals
+                weatherDiv.innerHTML = `
+                    🌍 ${actualName}<br>
+                    🌡️ ${weatherData.main.temp}°C | ${weatherData.weather[0].description}<br>
+                    💧 Humidity: ${weatherData.main.humidity}% | ༄ Wind: ${weatherData.wind.speed} m/s
+                `;
+            } catch (error) {
+                console.error('Weather error:', error);
+                weatherDiv.innerHTML = `⚠️ Error: ${error.message}`;
+            }
+        }
+        function updateScheduleDisplay() {
+            // Fetch the latest schedules from the server
+            fetch('/schedules', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Assuming the response contains a list of schedules
+                const schedulesContainer = document.getElementById('schedules-container');
+                schedulesContainer.innerHTML = '';  // Clear the current list
+        
+                if (data.length > 0) {
+                    data.forEach(schedule => {
+                        const scheduleElement = document.createElement('div');
+                        scheduleElement.innerHTML = `
+                            <div>
+                                <strong>${schedule.title}</strong> - ${schedule.date} ${schedule.time}
+                                <button onclick="deleteSchedule(${schedule.id})">Delete</button>
+                            </div>
+                        `;
+                        schedulesContainer.appendChild(scheduleElement);
+                    });
+                } else {
+                    schedulesContainer.innerHTML = '<p>No schedules found.</p>';
+                }
+            })
+            .catch(error => console.error('Error fetching schedules:', error));
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const options = { hour: '2-digit', minute: '2-digit' };
+            document.getElementById('clock').innerHTML = now.toLocaleTimeString([], options);
+        }
+        // Make sure DOM is loaded before running any scripts
+    document.addEventListener('DOMContentLoaded', () => {
+        updateClock();  // Initialize clock
+        setInterval(updateClock, 1000);  // Update clock every second
+        displayWeather();  // Display weather
+
+        document.getElementById('editScheduleBtn').addEventListener('click', function() {
+            navigateTo('/dashboard/optimization'); // Use navigateTo for redirection
+        });
+        
+        document.getElementById('homebtn').addEventListener('click', function() {
+                navigateTo('/');
+        });
+    });
+    </script>
+</body>
+</html>

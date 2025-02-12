@@ -1,0 +1,405 @@
+<!-- templates/RaspDashboard.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="icon" type="image/ico" href="static/favicon.ico" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/navigation.js') }}"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            background-color: #000; /* Black background */
+            color: #fff; /* White text */
+        }
+        
+        h1{
+            font-size: 2em;
+            color: #fff; /* Ensure headers are white */
+            margin-bottom: 20px;
+        } 
+        h2{
+            font-size: 3em;
+            color: #fff; /* Ensure headers are white */
+            margin-bottom: 20px;
+        }
+        h3 {
+            font-size: 2.5em;
+            color: #fff; /* Ensure headers are white */
+            margin-bottom: 20px;
+        }
+        p{
+            font-size: 1.5em;
+            color: #fff; /* Ensure headers are white */
+            margin-bottom: 20px;
+        }
+        
+        .dashboard-container {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .schedule-container {
+            width: 50%;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+        }   
+        
+        .clock {
+            font-size: 5em;
+            margin-left: 380px;
+            color: #fff; /* White text for clock */
+            flex: 1; /* Allow clock to take available space */
+        }   
+        
+        .weather-display {
+            font-size: 2em;
+            padding: 20px; /* Space inside the box */
+            border-radius: 10px; /* Rounded corners */
+            text-align: center; /* Center text */
+            max-width: 500px; /* Maximum width of the box */
+            max-height: 200px; /* Maximum height of the box */
+            margin: 20px; 
+        }
+
+        .schedule-form {
+            background: rgba(255, 255, 255, 0.1); /* Semi-transparent white */
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(255, 255, 255, 0.2);
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #fff; /* White label text */
+            font-weight: bold;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #000; /* Black input text */
+            background: #fff; /* White input background */
+        }
+        
+        .header-actions {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .schedule-list {
+            margin-top: 20px;
+        }
+        
+        .schedule-item {
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgb(255, 255, 255), 
+                transparent);
+            margin: 30px 0;
+            position: relative;
+        }
+        .vertical-divider {
+            width: 1px;
+            height: 400px; /* Adjust height as needed */
+            background: linear-gradient(180deg, 
+                transparent, 
+                rgb(255, 255, 255), 
+                transparent);
+            margin: 0 30px; /* Keeps spacing between elements */
+            position: relative;
+        }
+        
+        /* Styles for motivational quotes */
+        .quote-display {
+            font-size: 2em;
+            color: rgba(0, 255, 255); 
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 10px;
+            transition: opacity 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-actions">
+        <div id="clock" class="clock"></div>
+        <div style="text-align: center;">
+            <h4>Go to Settings</h4>
+            <img src="/qrcode" alt="QR Code">
+        </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Motivational Quotes Section -->
+    <div id="motivationalQuote" class="quote-display">Loading quote...</div> 
+     
+    <div class="divider"></div>
+  
+    <div class="dashboard-container">
+        <div id="scheduleContainer" class="schedule-container">
+            <h2>Your Schedules</h2>
+            <div id="scheduleList"></div>
+            <p id="noSchedulesMessage" style="display: none;">No schedules found. Add one using the form above!</p>
+        </div>
+    <div class="vertical-divider"></div>
+        
+        <div id="weather" class="weather-display">Loading...</div>
+    </div>
+    <script>
+        socket.on('mobile_set_location', async () => {
+            console.log('Location updated via So    cket.IO');
+            await displayWeather(); // Refresh weather data
+        });
+        socket.on('update_schedule_display', function() {
+            console.log('Schedule update detected via Socket.IO');
+            if (typeof displaySchedule === 'function') displaySchedule();
+        });
+        socket.on('user_changed', function(data) {
+            console.log('User changed detected via Socket.IO:', data.username);
+            location.reload(); // Reload the page to reflect the new user
+        });
+
+        const quotes = [
+            "!توكل على الله، وثق بنفسك، ولا تخلي شي يوقف بطريقك",
+            ".النجاح ما يجيك، انت اللي لازم تسعى له",
+            "!لا تقول مستحيل، قول بحاول",
+            ".اليوم اللي تتعب فيه، هو اليوم اللي تقرب فيه من حلمك أكثر",
+            "!طموحك هو سلاحك، لا تفرّط فيه",
+            ".كل شيء يبدأ بفكرة، لا تستهين بأحلامك",
+            ".الراحة ما تصنع الأبطال، التعب هو اللي يبنيك",
+            ".ارضَ بالقليل، لكن اسعَ للكثير",
+            ".أقوى نجاح هو اللي يجي بعد أصعب تحدي",
+            ".ما دامك تمشي للأمام، فإنت في الطريق الصح",
+            "!لا تنتظر الفرصة، اصنعها بنفسك",
+            "!اللي يفرق الناجح عن غيره هو الاستمرارية، لا توقف",
+            ".الحلم بدون عمل مجرد أمنية",
+            ".كل يوم فرصة جديدة، لا تضيعها",
+            ".الفشل مجرد درس، مو نهاية الطريق",
+            ".اليوم اللي تتعب فيه، هو اليوم اللي تكسب فيه",
+            ".ما فيه شيء اسمه صعب، فيه شيء اسمه يحتاج جهد",
+            ".عشان توصل، لازم تبدأ",
+            ".لا تخاف من التغيير، التغيير هو اللي يجلب النجاح",
+            ".إذا عندك حلم، دافع عنه بكل قوتك",
+            ".الحياة ما تنتظر أحد، خذ خطوتك الأولى اليوم",
+            ".التحديات تصنع منك شخص أقوى، لا تهرب منها",
+            ".النجاح ما يجي بين يوم وليلة، لكن كل خطوة تقربك له",
+            ".لا تخلي كلام الناس يوقفك، اللي يبي ينجح ما يسمع للإحباط",
+            ".وقتك هو رأس مالك، لا تضيعّه على الفاضي",
+            ".المستقبل يبدأ من قرارك اليوم",
+            ".الحظ ما يصنع الناجحين، الاجتهاد هو اللي يسوي الفرق",
+            ".دايم فكر قدّام، لا توقف عند أي عقبة",
+            ".الصبر والاجتهاد مفاتيح كل نجاح",
+            ".إذا طحت، قوم وكمل، اللي يوقف هو اللي يخسر",
+            ".ما فيه طريق سهل، بس كل تعب له نتيجة",
+            ".لا تستعجل النجاح، كل شيء بوقته يصير",
+            ".الأمل موجود، بس انت لازم تتحرك"
+        ];
+
+        
+        function updateClock() {
+            const now = new Date();
+            const options = { hour: '2-digit', minute: '2-digit' };
+            document.getElementById('clock').innerHTML = now.toLocaleTimeString([], options);
+        }
+        setInterval(updateClock, 1000); // Update clock every second
+
+        async function getCoordinates(city) {
+            const apiKey = 'bfeb2f99800d549a879b4da9eb0fd56a';
+            const geoUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)}&limit=1&appid=${apiKey}`;
+            
+            try {
+                const response = await fetch(geoUrl);
+                console.log('Geocoding response:', response);
+                
+                if (!response.ok) {
+                    throw new Error(`Geocoding API error: ${response.status} ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Geocoding data:', data);
+                
+                if (!data || data.length === 0) {
+                    throw new Error(`City "${city}" not found`);
+                }
+                
+                return { 
+                    lat: data[0].lat, 
+                    lon: data[0].lon,
+                    actualName: data[0].name
+                };
+            } catch (error) {
+                console.error('Geocoding error:', error);
+                throw error;
+            }
+        }
+        
+        async function getWeather(lat, lon) {
+            const apiKey = 'f59fa303e99ad0754266a7d89342753e';
+            const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
+        
+            try {
+                const response = await fetch(weatherUrl);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Weather request failed');
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Weather fetch error:', error);
+                throw new Error('Could not retrieve weather data');
+            }
+        }
+        
+        async function displayWeather() {
+            const weatherDiv = document.getElementById('weather');
+            if (!weatherDiv) {
+                console.error('Weather display element not found!');
+                return;
+            }
+            
+            try {
+                // Get location
+                const locationResponse = await fetch('/location');
+                if (!locationResponse.ok) throw new Error('Failed to get stored location');
+                const locationData = await locationResponse.json();
+                const location = locationData.location;
+                
+                // Get coordinates
+                const { lat, lon, actualName } = await getCoordinates(location);
+                
+                // Get weather data
+                const weatherData = await getWeather(lat, lon);
+                
+                // Update display
+                weatherDiv.innerHTML = `
+                    🌍 ${actualName}<br>
+                    🌡️ ${weatherData.main.temp}°C | ${weatherData.weather[0].description}<br>
+                    💧 Humidity: ${weatherData.main.humidity}% | ༄ Wind: ${weatherData.wind.speed} m/s
+                `;
+            } catch (error) {
+                console.error('Weather error:', error);
+                weatherDiv.innerHTML = `⚠️ Error: ${error.message}`;
+            }
+        }
+        
+        async function displaySchedule() {
+            console.log('[displaySchedule] Starting schedule fetch process.');
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session_id');
+        
+            try {
+                console.log('[displaySchedule] Sending request to /schedules...');
+                const apiUrl = sessionId ? `/schedules?session_id=${sessionId}` : '/schedules';
+                const response = await fetch(apiUrl, { credentials: 'include' });
+        
+                console.log('[displaySchedule] Response received:', response);
+                if (!response.ok) {
+                    console.error(`[displaySchedule] Server responded with status: ${response.status}`);
+                    const errorText = await response.text();
+                    console.error(`[displaySchedule] Server error message: ${errorText}`);
+                    throw new Error(`Failed to fetch schedules. Status: ${response.status}`);
+                }
+        
+                const schedules = await response.json();
+                console.log('[displaySchedule] Parsed schedules:', schedules);
+        
+                const scheduleList = document.getElementById('scheduleList');
+                const noSchedulesMessage = document.getElementById('noSchedulesMessage');
+        
+                if (!scheduleList || !noSchedulesMessage) {
+                    console.error('[displaySchedule] Missing DOM elements.');
+                    throw new Error('Required DOM elements are missing.');
+                }
+        
+                scheduleList.innerHTML = ''; // Clear existing content
+        
+                if (schedules.length > 0) {
+                    noSchedulesMessage.style.display = 'none';
+        
+                    schedules.forEach(schedule => {
+                        const scheduleItem = document.createElement('div');
+                        scheduleItem.classList.add('schedule-item');
+                        scheduleItem.dataset.id = schedule.id;
+                        scheduleItem.innerHTML = `
+                            <h3>${schedule.title}</h3>
+                            <p><strong>Note:</strong> ${schedule.note}</p>
+                            <p><strong>Date:</strong> ${schedule.date}</p>
+                            <p><strong>Time:</strong> ${schedule.time}</p>
+                            <div class="divider"></div>
+                        `;
+                        scheduleList.appendChild(scheduleItem);
+                    });
+                } else {
+                    noSchedulesMessage.style.display = 'block';
+                }
+        
+                console.log('[displaySchedule] Schedule display process completed successfully.');
+        
+            } catch (error) {
+                console.error('[displaySchedule] Error occurred:', error);
+                const errorContainer = document.getElementById('scheduleContainer');
+                if (errorContainer) {
+                    errorContainer.innerHTML = `⚠️ Error: ${error.message}`;
+                }
+            }
+        }
+        
+        function rotateQuotes() {
+            const quoteDiv = document.getElementById('motivationalQuote');
+            let index = 0;
+        
+            function showNextQuote() {
+                quoteDiv.style.opacity = 0;
+                setTimeout(() => {
+                    quoteDiv.innerHTML = quotes[index];
+                    quoteDiv.style.opacity = 1;
+                    index = (index + 1) % quotes.length;
+                }, 500);
+            }
+        
+            showNextQuote();
+            setInterval(showNextQuote, 10000); // Change quote every 10 seconds
+        }
+
+        // Ensure all scripts run after DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            updateClock();  // Initialize clock
+            setInterval(updateClock, 1000);  // Update clock every second
+            displayWeather();  // Display weather
+            displaySchedule(); // Load schedules on page load
+            rotateQuotes();    // Start rotating motivational quotes
+        });
+    </script>
+</body>
+</html>
